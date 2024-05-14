@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include <ableton/platforms/asio/AsioWrapper.hpp>
+#include <ableton/discovery/AsioTypes.hpp>
 #include <ableton/util/Injected.hpp>
 
 namespace ableton
@@ -27,9 +27,17 @@ namespace ableton
 namespace discovery
 {
 
-inline asio::ip::udp::endpoint multicastEndpoint()
+inline UdpEndpoint multicastEndpointV4()
 {
-  return {asio::ip::address_v4::from_string("224.76.78.75"), 20808};
+  return {IpAddressV4::from_string("224.76.78.75"), 20808};
+}
+
+inline UdpEndpoint multicastEndpointV6(uint64_t scopeId)
+{
+  // This is a non-permanently-assigned link-local multicast address (RFC4291)
+  return {
+    ::LINK_ASIO_NAMESPACE::ip::make_address("ff12::8080%" + std::to_string(scopeId)),
+    20808};
 }
 
 // Type tags for dispatching between unicast and multicast packets
@@ -41,22 +49,22 @@ struct UnicastTag
 };
 
 template <typename IoContext, std::size_t MaxPacketSize>
-class IpV4Interface
+class IpInterface
 {
 public:
   using Socket = typename util::Injected<IoContext>::type::template Socket<MaxPacketSize>;
 
-  IpV4Interface(util::Injected<IoContext> io, const asio::ip::address_v4& addr)
+  IpInterface(util::Injected<IoContext> io, const IpAddress& addr)
     : mIo(std::move(io))
     , mMulticastReceiveSocket(mIo->template openMulticastSocket<MaxPacketSize>(addr))
     , mSendSocket(mIo->template openUnicastSocket<MaxPacketSize>(addr))
   {
   }
 
-  IpV4Interface(const IpV4Interface&) = delete;
-  IpV4Interface& operator=(const IpV4Interface&) = delete;
+  IpInterface(const IpInterface&) = delete;
+  IpInterface& operator=(const IpInterface&) = delete;
 
-  IpV4Interface(IpV4Interface&& rhs)
+  IpInterface(IpInterface&& rhs)
     : mIo(std::move(rhs.mIo))
     , mMulticastReceiveSocket(std::move(rhs.mMulticastReceiveSocket))
     , mSendSocket(std::move(rhs.mSendSocket))
@@ -65,7 +73,7 @@ public:
 
 
   std::size_t send(
-    const uint8_t* const pData, const size_t numBytes, const asio::ip::udp::endpoint& to)
+    const uint8_t* const pData, const size_t numBytes, const UdpEndpoint& to)
   {
     return mSendSocket.send(pData, numBytes, to);
   }
@@ -83,7 +91,7 @@ public:
       SocketReceiver<MulticastTag, Handler>(std::move(handler)));
   }
 
-  asio::ip::udp::endpoint endpoint() const
+  UdpEndpoint endpoint() const
   {
     return mSendSocket.endpoint();
   }
@@ -98,8 +106,7 @@ private:
     }
 
     template <typename It>
-    void operator()(
-      const asio::ip::udp::endpoint& from, const It messageBegin, const It messageEnd)
+    void operator()(const UdpEndpoint& from, const It messageBegin, const It messageEnd)
     {
       mHandler(Tag{}, from, messageBegin, messageEnd);
     }
@@ -113,8 +120,8 @@ private:
 };
 
 template <std::size_t MaxPacketSize, typename IoContext>
-IpV4Interface<IoContext, MaxPacketSize> makeIpV4Interface(
-  util::Injected<IoContext> io, const asio::ip::address_v4& addr)
+IpInterface<IoContext, MaxPacketSize> makeIpInterface(
+  util::Injected<IoContext> io, const IpAddress& addr)
 {
   return {std::move(io), addr};
 }

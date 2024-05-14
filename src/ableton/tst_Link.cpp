@@ -1,4 +1,4 @@
-/* Copyright 2016, Ableton AG, Berlin. All rights reserved.
+/* Copyright 2023, Ableton AG, Berlin. All rights reserved.
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,27 +17,35 @@
  *  please contact <link-devs@ableton.com>.
  */
 
-#pragma once
-
-#include <algorithm>
+#include <ableton/Link.hpp>
+#include <ableton/platforms/stl/Clock.hpp>
+#include <ableton/test/CatchWrapper.hpp>
 
 namespace ableton
 {
-namespace platforms
-{
-namespace asio
-{
 
-// Utility for making v4 or v6 ip addresses from raw bytes in network byte-order
-template <typename AsioAddrType>
-AsioAddrType makeAddress(const char* pAddr)
+TEST_CASE("SessionState")
 {
-  using namespace std;
-  typename AsioAddrType::bytes_type bytes;
-  copy(pAddr, pAddr + bytes.size(), begin(bytes));
-  return AsioAddrType{bytes};
+  SECTION("ForceBeatTime")
+  {
+    using namespace std::chrono;
+    using namespace ableton::link;
+
+    const auto beats = 0.;
+    const auto time = microseconds{23456789};
+    const auto quantum = 4.;
+
+    using SessionState = ableton::BasicLink<platforms::stl::Clock>::SessionState;
+
+    for (auto tempo = 20.; tempo < 999.; tempo += 0.8)
+    {
+      const auto tl = Timeline{Tempo{tempo}, Beats{12345678.}, microseconds{1234567}};
+      auto sessionState = SessionState({{tl, {}}, false});
+      sessionState.forceBeatAtTime(beats, time, quantum);
+
+      CHECK(beats >= sessionState.beatAtTime(time, quantum));
+    }
+  }
 }
 
-} // namespace asio
-} // namespace platforms
 } // namespace ableton
