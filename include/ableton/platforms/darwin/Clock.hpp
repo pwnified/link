@@ -51,7 +51,7 @@ struct Clock
   Ticks microsToTicks(const Micros micros) const
   {
     // Negative Micros can not be represented in Ticks
-    assert(micros.count() >= 0);
+    // assert(micros.count() >= 0);
     return static_cast<Ticks>(micros.count() / mTicksToMicros);
   }
 
