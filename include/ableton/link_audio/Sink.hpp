@@ -36,6 +36,7 @@ struct Sink
 {
   Sink(std::string name, size_t maxNumSamples, Id id)
     : mName{std::move(name)}
+	, mNameIsUpToDate{false}
     , mId{std::move(id)}
     , mMaxNumSamples{maxNumSamples}
     , mQueue(128, {static_cast<uint32_t>(maxNumSamples)})
